@@ -41,8 +41,8 @@ def gettemperature():
                    #     print(value)
                    node=((strString.decode()).split(' ', 1)[0].split(',',1)[0]).split('=',1)[1]
                    temperature=((strString.decode()).split(' ', 1)[0].split(',',1)[1]).split('=',1)[1]
-                   setIntoDB((strString.decode()).split(' ', 1)[0],node,temperature)
-                   setInfoInfluxDB(node,temperature)
+                   id=setIntoDB((strString.decode()).split(' ', 1)[0],node,temperature)
+                   setInfoInfluxDB(id,node,temperature)
                    print(datetime.datetime.now(),strString)
                    logger.info(strString.decode())
       print("---------------")
@@ -66,11 +66,12 @@ def setIntoDB(str,node,temperature):
     cursor = db.cursor()
     time_array = time.localtime(time.time())
     other_way_time = time.strftime("%Y-%m-%d %H:%M:%S", time_array)
+    id=uuid.uuid1()
     # SQL 插入语句
     sql = "INSERT INTO data_collection_temperature(id, \
            record, time,node,temperature) \
            VALUES ('%s', '%s', '%s', '%s', '%s')" % \
-          (uuid.uuid1(), str, other_way_time,node,temperature)
+          (id, str, other_way_time,node,temperature)
     try:
         # 执行sql语句
         cursor.execute(sql)
@@ -84,7 +85,8 @@ def setIntoDB(str,node,temperature):
 
     # 关闭数据库连接
     db.close()
-def setInfoInfluxDB(temperature,node):
+    return id
+def setInfoInfluxDB(id,temperature,node):
     influxclient = InfluxDBClient('localhost', 8086, 'chengym', 'mylove093196', 'serverlist')
     try:
         time_array = time.localtime(time.time())
@@ -93,6 +95,7 @@ def setInfoInfluxDB(temperature,node):
             {
                 "measurement": "data_collection_temperature",
                 "tags": {
+                    "id":id,
                     "node": node
                 },
                 "time": other_way_time,
