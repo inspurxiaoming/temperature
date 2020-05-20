@@ -97,7 +97,8 @@ def setInfoInfluxDB(temperature,node):
                 },
                 "time": other_way_time,
                 "fields": {
-                    "temperature": temperature
+                    "temperature": temperature,
+                    "time": other_way_time
                 }
             }
         ]
