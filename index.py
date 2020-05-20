@@ -4,6 +4,15 @@ import MySQLdb
 import datetime;  # 引入time模块
 import time
 import uuid
+import logging
+from logging.handlers import TimedRotatingFileHandler
+logger = logging.getLogger('temperature-log')
+logger.setLevel(logging.INFO)
+ch = TimedRotatingFileHandler("temperature-log.log", when='D', encoding="utf-8")
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 def gettemperature():
     try:
       #端口，GNU / Linux上的/ dev / ttyUSB0 等 或 Windows上的 COM3 等
@@ -18,8 +27,6 @@ def gettemperature():
 
       print(ser.port)#获取到当前打开的串口名
       print(ser.baudrate)#获取波特率
-      # 获取波特率result=ser.write("我是东小东".encode("gbk"))#写数据
-      # print("写总字节数:",result)
       #循环接收数据，此为死循环，可用线程实现
       while True:
              if ser.in_waiting:
@@ -35,14 +42,17 @@ def gettemperature():
                    temperature=((strString.decode()).split(' ', 1)[0].split(',',1)[1]).split('=',1)[1]
                    setIntoDB((strString.decode()).split(' ', 1)[0],node,temperature)
                    print(datetime.datetime.now(),strString)
+                   logger.info(strString.decode())
       print("---------------")
       ser.close()#关闭串口
     except Exception as e:
         print("---异常---：",e)
+        logger.critical(e)
         ser.close()  # 关闭串口
     except :
         ser.close()
     finally:
+        logger.info("------------重启服务------------")
         gettemperature()
 
 def setIntoDB(str,node,temperature):
