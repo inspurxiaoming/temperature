@@ -5,6 +5,7 @@ import datetime;  # 引入time模块
 import time
 import uuid
 import logging
+from influxdb import InfluxDBClient
 from logging.handlers import TimedRotatingFileHandler
 logger = logging.getLogger('temperature-log')
 logger.setLevel(logging.INFO)
@@ -41,6 +42,7 @@ def gettemperature():
                    node=((strString.decode()).split(' ', 1)[0].split(',',1)[0]).split('=',1)[1]
                    temperature=((strString.decode()).split(' ', 1)[0].split(',',1)[1]).split('=',1)[1]
                    setIntoDB((strString.decode()).split(' ', 1)[0],node,temperature)
+                   setInfoInfluxDB(node,temperature)
                    print(datetime.datetime.now(),strString)
                    logger.info(strString.decode())
       print("---------------")
@@ -53,6 +55,7 @@ def gettemperature():
         ser.close()
     finally:
         logger.info("------------重启服务------------")
+        time.sleep(60)
         gettemperature()
 
 def setIntoDB(str,node,temperature):
@@ -61,8 +64,6 @@ def setIntoDB(str,node,temperature):
     # db = MySQLdb.connect("192.168.0.129", "root", "mylove093196", "serverlist", charset='utf8')
     # 使用cursor()方法获取操作游标
     cursor = db.cursor()
-    now = datetime.datetime.now()
-    now = now.strftime("%Y-%m-%d %H:%M:%S")
     time_array = time.localtime(time.time())
     other_way_time = time.strftime("%Y-%m-%d %H:%M:%S", time_array)
     # SQL 插入语句
@@ -83,5 +84,31 @@ def setIntoDB(str,node,temperature):
 
     # 关闭数据库连接
     db.close()
+def setInfoInfluxDB(temperature,node):
+    influxclient = InfluxDBClient('localhost', 8086, 'chengym', 'mylove093196', 'serverlist')
+    try:
+        time_array = time.localtime(time.time())
+        other_way_time = time.strftime("%Y-%m-%d %H:%M:%S", time_array)
+        json_body = [
+            {
+                "measurement": "data_collection_temperature",
+                "tags": {
+                    "node": node
+                },
+                "time": other_way_time,
+                "fields": {
+                    "temperature": temperature
+                }
+            }
+        ]
+        influxclient.write_points(json_body)  # 写入数据，同时创建表
+        print("写入成功")
+        logging.info(json_body)
+
+    except Exception as e:
+        print(e)
+        logging.error("写入influxdb错误")
+    finally:
+        influxclient.close()
 
 gettemperature();
